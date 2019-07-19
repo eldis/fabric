@@ -382,9 +382,6 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 }
 
 func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool, bootstrapBlock *cb.Block) comm.ClientConfig {
-	if clusterType && !conf.General.TLS.Enabled {
-		logger.Panicf("TLS is required for running ordering nodes of type %s.", consensusType(bootstrapBlock))
-	}
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
@@ -392,7 +389,8 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel, clusterType bool,
 		SecOpts:      &comm.SecureOptions{},
 	}
 
-	if (!conf.General.TLS.Enabled) || conf.General.Cluster.ClientCertificate == "" {
+	tlsEnabled := conf.General.TLS.Enabled || clusterType // always enable TLS in cluster
+	if !tlsEnabled || conf.General.Cluster.ClientCertificate == "" {
 		return cc
 	}
 
