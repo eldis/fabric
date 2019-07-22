@@ -139,18 +139,14 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	clusterGRPCServer := grpcServer
 	if clusterType {
 		clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, grpcServer, ioutil.ReadFile)
+		caSupport.ClientRootCAs = clusterServerConfig.SecOpts.ClientRootCAs
 	}
 
-	var servers = []*comm.GRPCServer{grpcServer}
-	// If we have a separate gRPC server for the cluster, we need to update its TLS
-	// CA certificate pool too.
-	if clusterGRPCServer != grpcServer {
-		servers = append(servers, clusterGRPCServer)
-	}
+	var servers = []*comm.GRPCServer{clusterGRPCServer}
 
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		// only need to do this if mutual TLS is required or if the orderer node is part of a cluster
-		if grpcServer.MutualTLSRequired() || clusterType {
+		if clusterGRPCServer.MutualTLSRequired() || clusterType {
 			logger.Debug("Executing callback to update root CAs")
 			updateTrustedRoots(caSupport, bundle, servers...)
 			if clusterType {
@@ -802,6 +798,7 @@ func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.
 	}
 	// also need to append statically configured root certs
 	if len(rootCASupport.ClientRootCAs) > 0 {
+		logger.Debug("adding statically configured root CAs")
 		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
 	}
 	// now update the client roots for the gRPC server
@@ -827,6 +824,9 @@ func updateClusterDialer(rootCASupport *comm.CredentialSupport, clusterDialer *c
 		for _, roots := range orgRootCAs {
 			clusterRootCAs = append(clusterRootCAs, roots...)
 		}
+	}
+	if len(clusterRootCAs) > 0 {
+		logger.Debug("adding cluster root CAs")
 	}
 	// Add the local root CAs too
 	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
