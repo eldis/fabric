@@ -170,6 +170,8 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 	}))
 
 	if clusterGRPCServer != grpcServer {
+		// TODO: Is server (manager, metricsProvider, etc.) thread safe?
+		ab.RegisterAtomicBroadcastServer(clusterGRPCServer.Server(), server)
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
