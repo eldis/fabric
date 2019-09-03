@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster
 
 import (
+	"fmt"
 	"bytes"
 	"encoding/hex"
 	"encoding/pem"
@@ -23,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/hyperledger/fabric/protos/utils"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -347,7 +349,7 @@ type EndpointCriteria struct {
 
 // EndpointconfigFromConfigBlock retrieves TLS CA certificates and endpoints
 // from a config block.
-func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, error) {
+func EndpointconfigFromConfigBlock(block *common.Block, clusterRootCAs [][]byte) ([]EndpointCriteria, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -367,6 +369,10 @@ func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, err
 	ordererConfig, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("failed obtaining orderer config from bundle")
+	}
+
+	if(ordererConfig.EtcdraftConfigMetadata() != nil) {
+		return etcdraftEndpoints(ordererConfig.EtcdraftConfigMetadata(), clusterRootCAs), nil
 	}
 
 	mspIDsToCACerts := make(map[string][][]byte)
@@ -393,6 +399,17 @@ func EndpointconfigFromConfigBlock(block *common.Block) ([]EndpointCriteria, err
 	}
 
 	return globalEndpointsFromConfig(aggregatedTLSCerts, bundle), nil
+}
+
+func etcdraftEndpoints(configMetadata *etcdraft.ConfigMetadata, clusterRootCAs [][]byte) []EndpointCriteria {
+	var endpoints []EndpointCriteria
+	for _, concenter := range configMetadata.Consenters {
+		endpoints = append(endpoints, EndpointCriteria{
+			Endpoint: fmt.Sprintf("%v:%v", concenter.Host, concenter.Port),
+			TLSRootCAs: clusterRootCAs,
+		})
+	}
+	return endpoints
 }
 
 func perOrgEndpoints(ordererConfig channelconfig.Orderer, mspIDsToCerts map[string][][]byte) []EndpointCriteria {

@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/capabilities"
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 	"github.com/pkg/errors"
 )
 
@@ -57,6 +59,7 @@ type OrdererProtos struct {
 // OrdererConfig holds the orderer configuration information.
 type OrdererConfig struct {
 	protos *OrdererProtos
+	etcdraftConfigMetadata  *etcdraft.ConfigMetadata
 	orgs   map[string]OrdererOrg
 
 	batchTimeout time.Duration
@@ -130,6 +133,14 @@ func NewOrdererConfig(ordererGroup *cb.ConfigGroup, mspConfig *MSPConfigHandler,
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
 
+	if (oc.protos.ConsensusType.GetType() == etcdraft.TypeKey) {
+		oc.etcdraftConfigMetadata = &etcdraft.ConfigMetadata{}
+
+		if err := proto.Unmarshal(oc.protos.ConsensusType.GetMetadata(), oc.etcdraftConfigMetadata); err != nil {
+			return nil, errors.Wrap(err, "failed to deserialize etcdraft ConfigMetadata")
+		}
+	}
+
 	if err := oc.Validate(); err != nil {
 		return nil, err
 	}
@@ -156,6 +167,11 @@ func (oc *OrdererConfig) ConsensusMetadata() []byte {
 // ConsensusState return the consensus type state.
 func (oc *OrdererConfig) ConsensusState() ab.ConsensusType_State {
 	return oc.protos.ConsensusType.State
+}
+
+// EtcdraftConfigMetadata returns ConfigMetadata for etcdraft
+func (oc *OrdererConfig) EtcdraftConfigMetadata() *etcdraft.ConfigMetadata {
+	return oc.etcdraftConfigMetadata
 }
 
 // BatchSize returns the maximum number of messages to include in a block.

@@ -38,13 +38,14 @@ func AnyChannel(_ string) bool {
 // PullerConfigFromTopLevelConfig creates a PullerConfig from a TopLevel config,
 // and from a signer and TLS key cert pair.
 // The PullerConfig's channel is initialized to be the system channel.
-func PullerConfigFromTopLevelConfig(systemChannel string, conf *localconfig.TopLevel, tlsKey, tlsCert []byte, signer crypto.LocalSigner) PullerConfig {
+func PullerConfigFromTopLevelConfig(systemChannel string, conf *localconfig.TopLevel, tlsKey, tlsCert []byte, clusterRootCAs [][]byte, signer crypto.LocalSigner) PullerConfig {
 	return PullerConfig{
 		Channel:             systemChannel,
 		MaxTotalBufferBytes: conf.General.Cluster.ReplicationBufferSize,
 		Timeout:             conf.General.Cluster.RPCTimeout,
 		TLSKey:              tlsKey,
 		TLSCert:             tlsCert,
+		ClusterRootCAs:      clusterRootCAs,
 		Signer:              signer,
 	}
 }
@@ -328,6 +329,7 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 type PullerConfig struct {
 	TLSKey              []byte
 	TLSCert             []byte
+	ClusterRootCAs      [][]byte
 	Timeout             time.Duration
 	Signer              crypto.LocalSigner
 	Channel             string
@@ -348,7 +350,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		return nil, errors.New("nil block")
 	}
 
-	endpoints, err := EndpointconfigFromConfigBlock(block)
+	endpoints, err := EndpointconfigFromConfigBlock(block, conf.ClusterRootCAs)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ import (
 	cb "github.com/hyperledger/fabric/protos/common"
 	ab "github.com/hyperledger/fabric/protos/orderer"
 	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric/protos/orderer/etcdraft"
 )
 
 // Org stores the common organizational config
@@ -96,6 +97,9 @@ type Orderer interface {
 
 	// ConsensusState returns the consensus-type state.
 	ConsensusState() ab.ConsensusType_State
+
+	// EtcdraftConfigMetadata returns ConfigMetadata for etcdraft
+	EtcdraftConfigMetadata() *etcdraft.ConfigMetadata
 
 	// BatchSize returns the maximum number of messages to include in a block
 	BatchSize() *ab.BatchSize

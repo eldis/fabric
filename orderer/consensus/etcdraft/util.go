@@ -58,12 +58,12 @@ func (mc *MembershipChanges) Rotated() bool {
 }
 
 // EndpointconfigFromFromSupport extracts TLS CA certificates and endpoints from the ConsenterSupport
-func EndpointconfigFromFromSupport(support consensus.ConsenterSupport) ([]cluster.EndpointCriteria, error) {
+func EndpointconfigFromFromSupport(support consensus.ConsenterSupport, clusterRootCAs [][]byte) ([]cluster.EndpointCriteria, error) {
 	lastConfigBlock, err := lastConfigBlockFromSupport(support)
 	if err != nil {
 		return nil, err
 	}
-	endpointconf, err := cluster.EndpointconfigFromConfigBlock(lastConfigBlock)
+	endpointconf, err := cluster.EndpointconfigFromConfigBlock(lastConfigBlock, clusterRootCAs)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func newBlockPuller(support consensus.ConsenterSupport,
 	stdDialer.ClientConfig.SecOpts.VerifyCertificate = nil
 
 	// Extract the TLS CA certs and endpoints from the configuration,
-	endpoints, err := EndpointconfigFromFromSupport(support)
+	endpoints, err := EndpointconfigFromFromSupport(support, stdDialer.ClientConfig.SecOpts.ServerRootCAs)
 	if err != nil {
 		return nil, err
 	}
