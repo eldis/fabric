@@ -27,7 +27,7 @@ const DefAliveTimeInterval = 5 * time.Second
 const DefAliveExpirationTimeout = 5 * DefAliveTimeInterval
 const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
 const DefReconnectInterval = DefAliveExpirationTimeout
-const msgExpirationFactor = 20
+const msgExpirationFactor = 48384
 
 const backoffMaxTimeout = 600
 
