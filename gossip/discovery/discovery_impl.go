@@ -29,7 +29,7 @@ const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
 const DefReconnectInterval = DefAliveExpirationTimeout
 const msgExpirationFactor = 20
 
-const backoffMaxTimeoutInSeconds = 600
+const backoffMaxTimeout = 600
 
 var maxConnectionAttempts = 120
 
@@ -158,9 +158,13 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 					return
 				}
 				d.logger.Warningf("Could not connect to %v : %v", member, err)
-				time.Sleep(reconnectTimeout * time.Second)
 
-				reconnectTimeout = math.MinInt32(reconnectTimeout * 2, backoffMaxTimeoutInSeconds)
+				time.Sleep(time.Duration(reconnectTimeout) * time.Second)
+
+				reconnectTimeout = reconnectTimeout * 2
+				if (reconnectTimeout > backoffMaxTimeout) {
+					reconnectTimeout = backoffMaxTimeout;
+				}
 				continue
 			}
 			peer := &NetworkMember{
