@@ -29,6 +29,7 @@ const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
 const DefReconnectInterval = DefAliveExpirationTimeout
 const msgExpirationFactor = 48384
 
+const defaultReconnectTimeout = 30
 const backoffMaxTimeout = 600
 
 var maxConnectionAttempts = 120
@@ -151,7 +152,7 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 	go func() {
-		for reconnectTimeout := 30; !d.toDie(); {
+		for reconnectTimeout := defaultReconnectTimeout; !d.toDie(); {
 			id, err := id()
 			if err != nil {
 				if d.toDie() {
@@ -159,14 +160,13 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 				}
 				d.logger.Warningf("Could not connect to %v : %v", member, err)
 
-				time.Sleep(time.Duration(reconnectTimeout) * time.Second)
+				time.Sleep(toDuration(reconnectTimeout))
 
-				reconnectTimeout = reconnectTimeout * 2
-				if (reconnectTimeout > backoffMaxTimeout) {
-					reconnectTimeout = backoffMaxTimeout;
-				}
+				reconnectTimeout = calculateNextBackoffTimeout(reconnectTimeout)
 				continue
 			}
+			reconnectTimeout = defaultReconnectTimeout
+
 			peer := &NetworkMember{
 				InternalEndpoint: member.InternalEndpoint,
 				Endpoint:         member.Endpoint,
@@ -1068,4 +1068,17 @@ func (s *aliveMsgStore) CheckValid(msg interface{}) bool {
 		panic(fmt.Sprint("Msg ", msg, " is not AliveMsg"))
 	}
 	return s.MessageStore.CheckValid(msg)
+}
+
+func toDuration(seconds int) time.Duration {
+	return time.Duration(seconds) * time.Second
+}
+
+func calculateNextBackoffTimeout(timeout int) int {
+	nextTimeout := timeout * 2
+	if (nextTimeout > backoffMaxTimeout) {
+		return backoffMaxTimeout
+	} else {
+		return nextTimeout
+	}
 }
