@@ -68,6 +68,11 @@ type CommService interface {
 	Forward(msg proto.ReceivedMessage)
 }
 
+// AnchorPeerTracker is an interface that is passed to discovery to check if an endpoint is an anchor peer
+type AnchorPeerTracker interface {
+	IsAnchorPeer(endpoint string) bool
+}
+
 // NetworkMember is a peer's representation
 type NetworkMember struct {
 	Endpoint         string

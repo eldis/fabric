@@ -867,8 +867,13 @@ func TestChannelConfig(t *testing.T) {
 	}
 
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	error := InitGossipService(orgIdentity, &disabled.Provider{}, endpoint, grpcServer, nil,
+<<<<<<< HEAD
+	error := InitGossipService(api.PeerIdentityType("IDENTITY"), &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil)
+=======
+	error := InitGossipService(orgIdentity, &disabled.Provider{}, endpoint, grpcServer, nil,
+		&naiveCryptoService{}, secAdv, nil, false)
+>>>>>>> 243dc0e1c... [FAB-17539] Always remember anchor peers in membership (#1422) (#1815)
 	assert.NoError(t, error)
 	gService := GetGossipService().(*gossipServiceImpl)
 	defer gService.Stop()
