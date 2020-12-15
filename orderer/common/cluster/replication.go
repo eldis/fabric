@@ -367,8 +367,8 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		SecOpts: &comm.SecureOptions{
 			Certificate:       conf.TLSCert,
 			Key:               conf.TLSKey,
-			RequireClientCert: true,
-			UseTLS:            true,
+			RequireClientCert: false,
+			UseTLS:            false,
 		},
 	}
 
