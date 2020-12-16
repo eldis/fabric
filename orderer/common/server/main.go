@@ -165,7 +165,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		logger.Debug("Executing callback to update root CAs")
-		updateTrustedRoots(caSupport, bundle, serversToUpdate...)
+		updateTrustedRoots(caSupport, bundle, clusterClientConfig.SecOpts.ServerRootCAs, serversToUpdate...)
 		if clusterType {
 			updateClusterDialer(caSupport, clusterDialer, clusterClientConfig.SecOpts.ServerRootCAs)
 		}
@@ -771,7 +771,7 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 	})
 }
 
-func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.Resources, servers ...*comm.GRPCServer) {
+func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.Resources, localClusterRootCAs [][]byte, servers ...*comm.GRPCServer) {
 	rootCASupport.Lock()
 	defer rootCASupport.Unlock()
 
@@ -859,6 +859,8 @@ func updateTrustedRoots(rootCASupport *comm.CredentialSupport, cm channelconfig.
 	if len(rootCASupport.ClientRootCAs) > 0 {
 		trustedRoots = append(trustedRoots, rootCASupport.ClientRootCAs...)
 	}
+	// add the local cluster root CAs too
+	trustedRoots = append(trustedRoots, localClusterRootCAs...)
 	// now update the client roots for the gRPC server
 	for _, srv := range servers {
 		err = srv.SetClientRootCAs(trustedRoots)
