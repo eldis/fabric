@@ -97,6 +97,8 @@ func newBlockPuller(support consensus.ConsenterSupport,
 	}
 	stdDialer.ClientConfig.AsyncConnect = false
 	stdDialer.ClientConfig.SecOpts.VerifyCertificate = nil
+	stdDialer.ClientConfig.SecOpts.RequireClientCert = false
+	stdDialer.ClientConfig.SecOpts.UseTLS = false
 
 	// Extract the TLS CA certs and endpoints from the configuration,
 	endpoints, err := EndpointconfigFromFromSupport(support)
