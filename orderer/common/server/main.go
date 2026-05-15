@@ -117,11 +117,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	serverConfig := initializeServerConfig(conf, metricsProvider)
 	grpcServer := initializeGrpcServer(conf, serverConfig)
-	caSupport := &comm.CredentialSupport{
-		AppRootCAsByChain:           make(map[string]comm.CertificateBundle),
-		OrdererRootCAsByChainAndOrg: make(comm.OrgRootCAs),
-		ClientRootCAs:               serverConfig.SecOpts.ClientRootCAs,
-	}
 
 	var r *replicationInitiator
 	clusterServerConfig := serverConfig
@@ -131,7 +126,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 
 	var reuseGrpcListener bool
 	typ := consensusType(bootstrapBlock)
-	var serversToUpdate []*comm.GRPCServer
 
 	clusterType := isClusterType(clusterBootBlock)
 	if clusterType {
@@ -151,24 +145,6 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
 			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
 		}
-
-		// If we have a separate gRPC server for the cluster,
-		// we need to update its TLS CA certificate pool.
-		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
-	}
-
-	// if cluster is reusing client-facing server, then it is already
-	// appended to serversToUpdate at this point.
-	if grpcServer.MutualTLSRequired() && !reuseGrpcListener {
-		serversToUpdate = append(serversToUpdate, grpcServer)
-	}
-
-	tlsCallback := func(bundle *channelconfig.Bundle) {
-		logger.Debug("Executing callback to update root CAs")
-		updateTrustedRoots(caSupport, bundle, clusterClientConfig.SecOpts.ServerRootCAs, serversToUpdate...)
-		if clusterType {
-			updateClusterDialer(caSupport, clusterDialer, clusterClientConfig.SecOpts.ServerRootCAs)
-		}
 	}
 
 	sigHdr, err := signer.NewSignatureHeader()
@@ -187,7 +163,7 @@ func Start(cmd string, conf *localconfig.TopLevel) {
 		time.Now(),
 		time.AfterFunc)
 
-	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf, tlsCallback)
+	manager := initializeMultichannelRegistrar(clusterBootBlock, r, clusterDialer, clusterServerConfig, clusterGRPCServer, conf, signer, metricsProvider, opsSystem, lf)
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	expiration := conf.General.Authentication.NoExpirationChecks
 	server := NewServer(manager, metricsProvider, &conf.Debug, conf.General.Authentication.TimeWindow, mutualTLS, expiration)
@@ -405,9 +381,9 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 			TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
 			CipherSuites:      comm.DefaultTLSCipherSuites,
 			ClientRootCAs:     clientRootCAs,
-			RequireClientCert: true,
+			RequireClientCert: false,
 			Certificate:       cert,
-			UseTLS:            true,
+			UseTLS:            false,
 			Key:               key,
 		},
 	}
@@ -465,12 +441,12 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 
 	cc.SecOpts = &comm.SecureOptions{
 		TimeShift:         timeShift,
-		RequireClientCert: true,
+		RequireClientCert: false,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
 		Certificate:       certBytes,
 		Key:               keyBytes,
-		UseTLS:            true,
+		UseTLS:            false,
 	}
 
 	return cc
